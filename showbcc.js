@@ -1,4 +1,3 @@
-var path = require('path');
 var _ = require('underscore')._;
 
 exports.hook_queue = function(next, connection) {
