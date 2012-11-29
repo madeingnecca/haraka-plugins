@@ -7,7 +7,7 @@ exports.hook_queue = function(next, connection) {
   var bccs = addresses.bcc();
 
   if (bccs.length) {
-    transaction.add_header('bcc', bccs.join(', '));
+    transaction.add_header('X-bcc', bccs.join(', '));
   }
 
   next();
