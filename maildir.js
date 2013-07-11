@@ -17,23 +17,23 @@ exports.hook_queue = function (next, connection) {
   });
 
   var maildir = new Maildir(cfg.main, connection);
-  var content = t.data_lines.join('');
+  var stream = t.message_stream;
 
   var forced;
   if (forced = t.header.get('x-maildir')) {
     //Maildir user forced by header.
-    maildir.maildir(forced).message(content, next);
+    maildir.maildir(forced).messageStream(stream, next);
   }
   else {
     //Populate ".Sent" dir of sender.
-    maildir.maildir(mail_from, '.Sent').message(content, function () {
+    maildir.maildir(mail_from, '.Sent').messageStream(stream, function () {
       //Populate Inbox of each recipient.
       (function nextRcpt(i, cb) {
         if (i == rcpt_to.length) {
           cb();
         }
         else {
-          maildir.maildir(rcpt_to[i]).message(content, function () {
+          maildir.maildir(rcpt_to[i]).messageStream(stream, function () {
             nextRcpt(i + 1, cb);
           });
         }
@@ -68,13 +68,14 @@ Maildir.prototype.maildir = function (user, folder) {
   var self = this;
   var userParts = user.split('@');
   var name = userParts[0], domain = userParts[1];
+  var mode;
 
   return {
     ready: function (callback) {
       var fileName = self.fileName();
       var dirs = ['tmp', 'cur', 'new'];
       var maildir = self.cfg.maildir_path;
-      var mode = self.cfg.maildir_mode;
+      mode = parseInt(self.cfg.maildir_mode, 8);
 
       var replace = {d: domain, n: name};
       for (var v in replace) {
@@ -121,12 +122,11 @@ Maildir.prototype.maildir = function (user, folder) {
         callback(f, fileName);
       }));
     },
-    message: function (content, callback) {
+    messageStream: function (stream, callback) {
       this.ready(function (f, name) {
-        fs.writeFile(f['tmp'], content, function (err) {
-          if (err) {
-            throw err;
-          }
+        var fileStream = fs.createWriteStream(f['tmp'], {flags: 'w'});
+        stream.pipe(fileStream);
+        fileStream.on('finish', function() {
           fs.link(f['tmp'], f['new'], function (err) {
             if (err) {
               throw err;
