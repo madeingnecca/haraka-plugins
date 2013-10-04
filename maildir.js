@@ -30,7 +30,7 @@ exports.hook_queue = function (next, connection) {
       //Populate Inbox of each recipient.
       (function nextRcpt(i, cb) {
         if (i == rcpt_to.length) {
-          cb();
+          cb(OK);
         }
         else {
           maildir.maildir(rcpt_to[i]).messageStream(stream, function () {
