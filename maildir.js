@@ -37,7 +37,9 @@ exports.hook_queue = function (next, connection) {
             nextRcpt(i + 1, cb);
           });
         }
-      }(0, next));
+      }(0, function() {
+          next(OK);
+      }));
     });
   }
 };
