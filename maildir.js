@@ -38,7 +38,7 @@ exports.hook_queue = function (next, connection) {
           });
         }
       }(0, function() {
-	  next(OK);
+          next(OK);
       }));
     });
   }
