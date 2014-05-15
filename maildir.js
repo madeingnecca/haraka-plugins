@@ -24,9 +24,8 @@ exports.hook_queue = function(next, connection) {
   var maildir = new Maildir(cfg.main, this, connection);
   var stream = t.message_stream;
 
-  // If an x-maildir header was supplied then
-  // populate only that maildir and stop.
-  var forced = trim(t.header.get('x-maildir-rcpt'));
+  // Give the possibility to force the maildir user.
+  var forced = trim(t.header.get('x-maildir-force-user')) || cfg.main.force_user;
   if (forced) {
     maildir.maildir({user: forced}).messageStream(stream, accept);
     return;
@@ -95,14 +94,15 @@ Maildir.prototype.maildir = function(params) {
   var folder = params.folder;
   var userParts = user.split('@');
   var name = userParts[0], domain = userParts[1];
-  var mode;
+  var dirMode, fileMode;
 
   return {
     ready: function(callback) {
       var fileName = self.fileName();
       var dirs = ['tmp', 'cur', 'new'];
-      var maildir = self.cfg.maildir_path;
-      mode = parseInt(self.cfg.maildir_mode, 8);
+      var maildir = self.cfg.path;
+      dirMode = parseInt(self.cfg.dir_mode, 8);
+      fileMode = parseInt(self.cfg.file_mode, 8);
 
       var replace = {d: domain, n: name};
       var v;
@@ -138,7 +138,7 @@ Maildir.prototype.maildir = function(params) {
             nextDir(i + 1, cb);
           }
           else {
-            mkdirp(dir, mode, function(err) {
+            mkdirp(dir, dirMode, function(err) {
               if (err) {
                 throw err;
               }
@@ -153,7 +153,10 @@ Maildir.prototype.maildir = function(params) {
     },
     messageStream: function(stream, callback) {
       this.ready(function(f, name) {
-        var fileStream = fs.createWriteStream(f['tmp'], {flags: 'w'});
+        var fileStream = fs.createWriteStream(f['tmp'], {
+          flags: 'w',
+          mode: fileMode
+        });
         stream.pipe(fileStream);
         fileStream.on('finish', function() {
           fs.link(f['tmp'], f['new'], function(err) {
